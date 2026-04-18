@@ -1,0 +1,7 @@
+doc/
+Doc/
+node_modules/
+.venv/
+database.sqlite
+*.sqlite
+*.db

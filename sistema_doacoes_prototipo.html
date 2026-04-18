@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo — Sistema de Doações</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --text:#0f172a; --muted:#475569; --primary:#2563eb; --primary-600:#1d4ed8; --ring:#93c5fd; --border:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji'; background:var(--bg); color:var(--text);}
+  .container{max-width:1100px;margin-inline:auto;padding:24px}
+  header{background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10}
+  .header-inner{max-width:1100px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;}
+  .brand-wrap{display:flex; align-items:center; gap:12px; min-width:0;}
+  .brand{font-weight:800; font-size:20px; color:var(--primary)}
+  nav{display:flex; gap:8px; flex-wrap:wrap}
+  button, .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600}
+  button:hover{background:#fafafa}
+  .btn-primary{background:var(--primary); color:#fff; border-color:var(--primary)}
+  .btn-primary:hover{background:var(--primary-600)}
+  .grid{display:grid; gap:16px}
+  @media (min-width:640px){ .grid.sm-2{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (min-width:900px){ .grid.lg-3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card .content{padding:16px 18px}
+  .card .title{font-weight:700; font-size:18px; margin:0 0 6px}
+  .muted{color:var(--muted)}
+  .section-title{font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px; margin:0 0 12px}
+  input, select, textarea{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#fff}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--ring); border-color:var(--primary)}
+  .stack{display:grid; gap:12px}
+  .empty{padding:28px; text-align:center; color:var(--muted)}
+  footer{margin:32px 0 12px; text-align:center; color:var(--muted); font-size:13px}
+  .pill{font-size:12px; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; display:inline-block}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .header-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+  .menu-toggle{display:none; width:44px; height:44px; padding:0; align-items:center; justify-content:center; flex-direction:column; gap:4px}
+  .menu-toggle span{display:block; width:18px; height:2px; background:var(--text); border-radius:999px}
+  .mobile-menu{display:none}
+
+  @media (max-width: 860px){
+    .header-inner{padding:14px 16px; align-items:flex-start}
+    .brand-wrap{width:100%; justify-content:space-between; align-items:center}
+    .header-actions{display:none}
+    .menu-toggle{display:inline-flex}
+    nav{display:none}
+    .mobile-menu{display:none; max-width:1100px; margin:0 auto; padding:0 16px 16px}
+    .mobile-menu.open{display:block}
+    .mobile-menu .mobile-panel{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:0 8px 24px rgba(15,23,42,.08)}
+    .mobile-menu .mobile-panel .stack{gap:10px}
+    .mobile-menu nav{display:flex; flex-direction:column; gap:8px}
+    .mobile-menu .row{flex-direction:column; align-items:stretch}
+    .mobile-menu .row button{width:100%}
+    #session-badge{white-space:nowrap}
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand-wrap">
+        <div class="brand">Sistema de Doações</div>
+        <span id="session-badge" class="pill">Sessão: carregando...</span>
+      </div>
+      <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false" onclick="toggleMobileMenu(this)">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="header-actions">
+        <button onclick="loginAs('doador')">Entrar como Doador</button>
+        <button onclick="loginAs('recebedor')">Entrar como Recebedor</button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="mobile-menu" aria-hidden="true">
+      <div class="mobile-panel">
+        <nav>
+          <button id="menu-home" onclick="setView('home'); closeMobileMenu()">Início</button>
+          <button id="menu-demands" onclick="setView('demands'); closeMobileMenu()">Demandas</button>
+          <button id="menu-new" onclick="setView('new'); closeMobileMenu()">Nova Solicitação</button>
+          <button id="menu-mine" onclick="setView('mine'); closeMobileMenu()">Minhas Doações</button>
+        </nav>
+        <div class="row" style="margin-top:12px">
+          <button onclick="loginAs('doador'); closeMobileMenu()">Entrar como Doador</button>
+          <button onclick="loginAs('recebedor'); closeMobileMenu()">Entrar como Recebedor</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <!-- HOME -->
+    <section id="view-home" class="view">
+      <div class="card">
+        <div class="content" style="text-align:center">
+          <h1 style="margin:6px 0 8px">Bem-vindo 👋</h1>
+          <p class="muted">Conectamos <b>Doadores</b>, <b>Escolas/Instituições</b> e <b>Recebedores</b> de forma simples e transparente.</p>
+          <div style="margin:25px 20 8px">
+            <a class="btn btn-primary" href="javascript:setView('demands')">Ver demandas disponíveis</a>
+          </div>
+          <div class="row" style="justify-content:center; margin-top:25px">
+            <span class="pill">Registro de logs automático</span>
+            <span class="pill">Confirmação de recebimento</span>
+            <span class="pill">Controle do Administrador</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMANDS -->
+    <section id="view-demands" class="view" hidden>
+      <h2 class="section-title">🔎 Demandas Abertas</h2>
+      <div class="row" style="margin-bottom:12px">
+        <input id="q" placeholder="Buscar por palavra-chave…" oninput="filterDemands(this.value)">
+        <select id="cat" onchange="filterDemands(document.getElementById('q').value)">
+          <option value="">Todas as categorias</option>
+          <option value="materiais">Materiais escolares</option>
+          <option value="alimentos">Alimentos</option>
+          <option value="roupas">Roupas</option>
+        </select>
+      </div>
+      <div id="demands-grid" class="grid sm-2 lg-3"></div>
+    </section>
+
+    <!-- NEW REQUEST -->
+    <section id="view-new" class="view" hidden>
+      <h2 class="section-title">📝 Registrar Solicitação de Doação</h2>
+      <div class="card">
+        <div class="content">
+          <div class="stack">
+            <input id="don-title" placeholder="Título da solicitação">
+            <textarea id="don-desc" placeholder="Descrição da necessidade" rows="3"></textarea>
+            <select id="don-cat">
+              <option value="materiais">Materiais escolares</option>
+              <option value="alimentos">Alimentos</option>
+              <option value="roupas">Roupas</option>
+            </select>
+            <select id="don-school">
+              <option value="1">EMEF Maria do Rosário</option>
+            </select>
+            <div class="row">
+              <input id="don-qty" type="number" min="1" placeholder="Quantidade">
+              <input id="don-city" placeholder="Cidade/UF">
+            </div>
+            <button class="btn btn-primary" onclick="createDemandRequest()">Cadastrar solicitação</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MINE -->
+    <section id="view-mine" class="view" hidden>
+      <h2 id="mine-title" class="section-title">✅ Minhas Doações</h2>
+      <div id="mine-grid" class="grid sm-2 lg-3"></div>
+      <div id="mine-empty" class="empty">Você ainda não registrou doações.</div>
+    </section>
+  </main>
+  <footer>Protótipo Projeto Integrador</footer>
+
+<script>
+  const API_BASE = 'http://localhost:3000';
+  let DEMANDS = [];
+  let MY_DONATIONS = [];
+  let session = {
+    token: null,
+    user: null,
+  };
+
+  const DEMO_ACCOUNTS = {
+    doador: { email:'doador@sistema.local', senha:'123456' },
+    recebedor: { email:'recebedor@sistema.local', senha:'123456' },
+  };
+
+  function updateSessionBadge(){
+    const badge = document.getElementById('session-badge');
+    if(!badge) return;
+    if(!session.user){
+      badge.textContent = 'Sessão: não autenticada';
+      return;
+    }
+    badge.textContent = `Sessão: ${session.user.nome} (${session.user.tipo})`;
+  }
+
+  function updateMenuByRole(){
+    const menuNew = document.getElementById('menu-new');
+    const menuMine = document.getElementById('menu-mine');
+    const mineTitle = document.getElementById('mine-title');
+    const mineEmpty = document.getElementById('mine-empty');
+    if(!menuNew || !menuMine) return;
+
+    if(!session.user){
+      menuNew.style.display = '';
+      menuMine.textContent = 'Minhas Doações';
+      if(mineTitle) mineTitle.textContent = '✅ Minhas Doações';
+      if(mineEmpty) mineEmpty.textContent = 'Você ainda não registrou doações.';
+      return;
+    }
+
+    if(session.user.tipo === 'recebedor'){
+      menuNew.style.display = '';
+      menuMine.textContent = 'Minhas Solicitações';
+      if(mineTitle) mineTitle.textContent = '📝 Minhas Solicitações';
+      if(mineEmpty) mineEmpty.textContent = 'Você ainda não possui solicitações vinculadas.';
+      return;
+    }
+
+    if(session.user.tipo === 'doador'){
+      menuNew.style.display = 'none';
+      menuMine.textContent = 'Minhas Doações';
+      if(mineTitle) mineTitle.textContent = '✅ Minhas Doações';
+      if(mineEmpty) mineEmpty.textContent = 'Você ainda não registrou doações.';
+      if(!document.getElementById('view-new').hidden){
+        setView('home');
+      }
+      return;
+    }
+
+    menuNew.style.display = '';
+    menuMine.textContent = 'Minhas Doações';
+    if(mineTitle) mineTitle.textContent = '✅ Minhas Doações';
+    if(mineEmpty) mineEmpty.textContent = 'Você ainda não registrou doações.';
+  }
+
+  function toggleMobileMenu(button){
+    const mobileMenu = document.getElementById('mobile-menu');
+    if(!mobileMenu || !button) return;
+    const isOpen = mobileMenu.classList.toggle('open');
+    mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+    button.setAttribute('aria-expanded', String(isOpen));
+  }
+
+  function closeMobileMenu(){
+    const mobileMenu = document.getElementById('mobile-menu');
+    const button = document.querySelector('.menu-toggle');
+    if(!mobileMenu || !button) return;
+    mobileMenu.classList.remove('open');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    button.setAttribute('aria-expanded', 'false');
+  }
+
+  async function setView(id){
+    document.querySelectorAll('.view').forEach(v=>v.hidden=true);
+    document.getElementById('view-'+id).hidden=false;
+    closeMobileMenu();
+    if(id==='demands') await loadDemands();
+    if(id==='mine') await loadMyDonations();
+  }
+
+  function renderDemands(list){
+    const grid = document.getElementById('demands-grid');
+    grid.innerHTML = '';
+    if(!list.length){ grid.innerHTML = '<div class="empty">Nenhuma demanda encontrada.</div>'; return; }
+    list.forEach(d=>{
+      const el = document.createElement('div');
+      el.className='card';
+      el.innerHTML = `
+        <div class="content">
+          <div class="title">${d.titulo}</div>
+          <div class="muted" style="margin-bottom:8px">${d.instituicao_nome || 'Instituição'} • Sistema</div>
+          <p class="muted" style="margin:6px 0 14px">${d.descricao} • Qtde: ${d.quantidade}</p>
+          <div class="row" style="justify-content:space-between; align-items:center">
+            <span class="pill">${labelCat(d.categoria)}</span>
+            <button class="btn btn-primary" onclick="offerDonation(${d.id})">Oferecer Doação</button>
+          </div>
+        </div>`;
+      grid.appendChild(el);
+    });
+  }
+
+  function renderMine(){
+    const grid = document.getElementById('mine-grid');
+    const empty = document.getElementById('mine-empty');
+    const isDonorSession = session.user && session.user.tipo === 'doador';
+    const isReceiverSession = session.user && session.user.tipo === 'recebedor';
+    grid.innerHTML = '';
+    if(!MY_DONATIONS.length){ empty.style.display='block'; return; }
+    empty.style.display='none';
+    MY_DONATIONS.forEach(d=>{
+      const el = document.createElement('div');
+      el.className='card';
+      const restante = Number(d.tempo_restante_segundos || 0);
+      const dias = Math.floor(restante / 86400);
+      const horas = Math.floor((restante % 86400) / 3600);
+      el.innerHTML = `
+        <div class="content">
+          <div class="title">${d.demanda_titulo}</div>
+          <div class="muted" style="margin-bottom:8px">Status: ${d.status} • Prazo: ${dias}d ${horas}h</div>
+          <p class="muted" style="margin:6px 0 14px">${d.demanda_descricao}</p>
+          <div class="row">${
+            isDonorSession
+              ? `<button class="btn" onclick="confirmDonation(${d.id})">Confirmar Doação</button>`
+              : ''
+          }
+            ${isReceiverSession ? '<span class="pill">Aguardando confirmação do doador</span>' : ''}
+            <button class="btn" onclick="viewLog(${d.id})">Ver log</button>
+          </div>
+        </div>`;
+      grid.appendChild(el);
+    });
+  }
+
+  function filterDemands(q){
+    const cat = document.getElementById('cat').value;
+    const query = (q||'').toLowerCase();
+    const list = DEMANDS.filter(d=>{
+      const matchesQ = d.titulo.toLowerCase().includes(query) || d.descricao.toLowerCase().includes(query);
+      const matchesC = !cat || d.categoria===cat;
+      return matchesQ && matchesC;
+    });
+    renderDemands(list);
+  }
+
+  function labelCat(c){
+    return c==='materiais'?'Materiais escolares': c==='alimentos'?'Alimentos':'Roupas';
+  }
+
+  async function apiFetch(path, options = {}, withAuth = false){
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+
+    if(withAuth && session.token){
+      headers.Authorization = `Bearer ${session.token}`;
+    }
+
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){
+      throw new Error(data.error || 'Falha na comunicação com o servidor.');
+    }
+    return data;
+  }
+
+  async function loginAs(tipo){
+    const account = DEMO_ACCOUNTS[tipo];
+    if(!account){
+      alert('Perfil de sessão inválido.');
+      return;
+    }
+
+    try{
+      const login = await apiFetch('/auth/login', {
+        method:'POST',
+        body: JSON.stringify(account)
+      });
+      session.token = login.token;
+      session.user = login.user;
+      updateSessionBadge();
+      updateMenuByRole();
+      closeMobileMenu();
+      if(tipo === 'recebedor'){
+        setView('new');
+      }
+    }catch(err){
+      alert(`Não foi possível autenticar usuário demo: ${err.message}`);
+    }
+  }
+
+  async function loadDemands(){
+    try{
+      DEMANDS = await apiFetch('/demands?status=aberta');
+      renderDemands(DEMANDS);
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  async function offerDonation(id){
+    if(!session.user || session.user.tipo !== 'doador'){
+      alert('Somente doador pode oferecer doação. Troque para o perfil Doador.');
+      return;
+    }
+
+    try{
+      await apiFetch('/donations', {
+        method:'POST',
+        body: JSON.stringify({ demanda_id: id })
+      }, true);
+      alert('Doação oferecida! Acompanhe em "Minhas Doações".');
+      await loadDemands();
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  async function createDemandRequest(){
+    if(!session.user || session.user.tipo !== 'recebedor'){
+      alert('Apenas recebedor pode registrar solicitação. Troque para o perfil Recebedor.');
+      return;
+    }
+
+    const title = document.getElementById('don-title').value.trim();
+    const desc = document.getElementById('don-desc').value.trim();
+    const cat = document.getElementById('don-cat').value;
+    const schoolId = Number(document.getElementById('don-school').value);
+    const qty = Number(document.getElementById('don-qty').value || 1);
+    const city = document.getElementById('don-city').value.trim() || 'Sistema';
+    if(!title || !desc){ alert('Preencha título e descrição.'); return; }
+
+    try{
+      await apiFetch('/demands', {
+        method:'POST',
+        body: JSON.stringify({
+          titulo: title,
+          descricao: `${desc} • Origem: ${city}`,
+          categoria: cat,
+          quantidade: qty,
+          instituicao_id: schoolId
+        }),
+      }, true);
+
+      document.getElementById('don-title').value='';
+      document.getElementById('don-desc').value='';
+      document.getElementById('don-qty').value='';
+      document.getElementById('don-city').value='';
+      alert('Solicitação registrada e publicada como demanda aberta.');
+      await setView('demands');
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  async function loadMyDonations(){
+    try{
+      MY_DONATIONS = await apiFetch('/donations', { method:'GET' }, true);
+      renderMine();
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  async function confirmDonation(id){
+    if(!session.user || session.user.tipo !== 'doador'){
+      alert('Somente doador pode confirmar a doação com código da instituição.');
+      return;
+    }
+
+    const code = prompt('Informe o código de confirmação gerado pela instituição:');
+    if(!code) return;
+    try{
+      await apiFetch(`/donations/${id}/confirm`, {
+        method:'PATCH',
+        body: JSON.stringify({ codigo: code })
+      }, true);
+      alert('Doação confirmada com sucesso.');
+      await loadMyDonations();
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  function viewLog(id){
+    const d = MY_DONATIONS.find(x=>x.id===id);
+    if(!d) return;
+    const linhas = [
+      `Doação #${d.id}`,
+      `Demanda: ${d.demanda_titulo}`,
+      `Status: ${d.status}`,
+      `Início: ${new Date(d.data_inicio).toLocaleString()}`,
+      `Prazo: ${new Date(d.prazo_entrega).toLocaleString()}`,
+      `Tempo restante: ${d.tempo_restante_segundos}s`
+    ];
+    alert('LOG\n\n' + linhas.join('\n'));
+  }
+
+  // default view
+  (async ()=>{
+    await loginAs('doador');
+    await loadDemands();
+    updateMenuByRole();
+    setView('home');
+  })();
+</script>
+</body>
+</html>
