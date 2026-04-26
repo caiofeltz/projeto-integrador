@@ -91,7 +91,12 @@ async function login(payload) {
     throw new HttpError(400, 'Email e senha são obrigatórios.');
   }
 
-  const user = await get('SELECT * FROM users WHERE email = ?', [email]);
+  const user = await get(
+    `SELECT id, nome, email, senha, tipo, status, instituicao_id
+     FROM users
+     WHERE email = ?`,
+    [email],
+  );
   if (!user) {
     throw new HttpError(401, 'Credenciais inválidas.');
   }

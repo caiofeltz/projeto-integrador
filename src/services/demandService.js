@@ -25,7 +25,7 @@ async function createDemand(payload, user) {
     throw new HttpError(403, 'Apenas recebedor ativo pode criar solicitação de doação.');
   }
 
-  const requester = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+  const requester = await get('SELECT id, status, instituicao_id FROM users WHERE id = ?', [user.id]);
   if (!requester || requester.status !== USER_STATUS.ATIVO) {
     throw new HttpError(403, 'Recebedor precisa estar ativo para criar solicitações.');
   }
@@ -65,7 +65,7 @@ async function createDemand(payload, user) {
 async function listDemands(filters = {}) {
   await expireOverdueDonations();
 
-  const where = [];
+  const where = ['d.deleted_at IS NULL'];
   const params = [];
 
   if (filters.status) {
@@ -85,7 +85,8 @@ async function listDemands(filters = {}) {
   }
 
   const sql = `
-    SELECT d.*, i.nome AS instituicao_nome
+    SELECT d.id, d.titulo, d.descricao, d.categoria, d.quantidade, d.status,
+           d.recebedor_id, d.instituicao_id, d.created_at, i.nome AS instituicao_nome
     FROM demands d
     JOIN institutions i ON i.id = d.instituicao_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
@@ -96,7 +97,10 @@ async function listDemands(filters = {}) {
 }
 
 async function updateDemand(id, payload, user) {
-  const demand = await get('SELECT * FROM demands WHERE id = ?', [id]);
+  const demand = await get(
+    'SELECT id, recebedor_id, instituicao_id FROM demands WHERE id = ? AND deleted_at IS NULL',
+    [id],
+  );
   if (!demand) {
     throw new HttpError(404, 'Demanda não encontrada.');
   }
@@ -124,19 +128,32 @@ async function updateDemand(id, payload, user) {
   }
 
   params.push(id);
-  await run(`UPDATE demands SET ${fields.join(', ')} WHERE id = ?`, params);
+  await run(`UPDATE demands SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`, params);
 
-  return get('SELECT * FROM demands WHERE id = ?', [id]);
+  return get(
+    `SELECT id, titulo, descricao, categoria, quantidade, status, recebedor_id, instituicao_id, created_at
+     FROM demands
+     WHERE id = ? AND deleted_at IS NULL`,
+    [id],
+  );
 }
 
 async function deleteDemand(id) {
-  const demand = await get('SELECT id FROM demands WHERE id = ?', [id]);
+  const demand = await get('SELECT id FROM demands WHERE id = ? AND deleted_at IS NULL', [id]);
   if (!demand) {
     throw new HttpError(404, 'Demanda não encontrada.');
   }
 
-  await run('DELETE FROM donations WHERE demanda_id = ?', [id]);
-  await run('DELETE FROM demands WHERE id = ?', [id]);
+  const deletedAt = new Date().toISOString();
+  await run('BEGIN TRANSACTION');
+  try {
+    await run('UPDATE donations SET deleted_at = ? WHERE demanda_id = ? AND deleted_at IS NULL', [deletedAt, id]);
+    await run('UPDATE demands SET deleted_at = ? WHERE id = ?', [deletedAt, id]);
+    await run('COMMIT');
+  } catch (error) {
+    await run('ROLLBACK');
+    throw error;
+  }
 
   return { deleted: true, id };
 }

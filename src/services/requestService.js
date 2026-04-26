@@ -31,7 +31,10 @@ async function updateRequestStatus(id, action, user) {
     throw new HttpError(400, 'Ação inválida. Use aprovar ou rejeitar.');
   }
 
-  const request = await get('SELECT * FROM requests WHERE id = ?', [id]);
+  const request = await get(
+    'SELECT id, status, receiver_id, instituicao_id FROM requests WHERE id = ?',
+    [id],
+  );
   if (!request) {
     throw new HttpError(404, 'Pedido de vínculo não encontrado.');
   }

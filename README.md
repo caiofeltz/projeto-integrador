@@ -4,7 +4,7 @@ Aplicacao web desenvolvida para o Projeto Integrador em Tecnologia da Informacao
 
 ## Sobre o projeto
 
-O projeto foi criado a partir de uma necessidade social observada no ambiente escolar: criancas que faltam aulas com frequencia e familias que enfrentam dificuldades basicas, incluindo falta de comida. Em varios casos, essas familias recorrem a mercados da regiao para pedir alimentos ou buscar sustento em situacoes de vulnerabilidade.
+O projeto foi criado a partir de uma necessidade social observada no ambiente escolar público: criancas que faltam aulas com frequencia e familias que enfrentam dificuldades basicas, incluindo falta de comida. Em varios casos, essas familias recorrem a mercados da regiao para pedir alimentos ou buscar sustento em situacoes de vulnerabilidade.
 
 A proposta do sistema e organizar doacoes de forma centralizada, tendo a escola como ponto principal do fluxo. Em vez de doacoes espalhadas e sem controle, a instituicao recebe e registra as solicitacoes, o que ajuda a aproximar doadores, garantir mais transparencia e aumentar as chances de apoio real aos alunos e suas familias.
 

@@ -23,13 +23,13 @@ async function expireOverdueDonations() {
   const overdue = await all(
     `SELECT id, demanda_id
      FROM donations
-     WHERE status = ? AND prazo_entrega < ?`,
+     WHERE status = ? AND prazo_entrega < ? AND deleted_at IS NULL`,
     [DONATION_STATUS.RESERVADA, new Date().toISOString()],
   );
 
   for (const donation of overdue) {
     await run('UPDATE donations SET status = ?, codigo_confirmacao = NULL WHERE id = ?', [DONATION_STATUS.EXPIRADA, donation.id]);
-    await run('UPDATE demands SET status = ? WHERE id = ?', [DEMAND_STATUS.ABERTA, donation.demanda_id]);
+    await run('UPDATE demands SET status = ? WHERE id = ? AND deleted_at IS NULL', [DEMAND_STATUS.ABERTA, donation.demanda_id]);
   }
 }
 
@@ -45,7 +45,10 @@ async function createDonation(payload, user) {
 
   await expireOverdueDonations();
 
-  const demand = await get('SELECT * FROM demands WHERE id = ?', [demandaId]);
+  const demand = await get(
+    'SELECT id, status FROM demands WHERE id = ? AND deleted_at IS NULL',
+    [demandaId],
+  );
   if (!demand) {
     throw new HttpError(404, 'Demanda não encontrada.');
   }
@@ -63,7 +66,7 @@ async function createDonation(payload, user) {
     [demandaId, user.id, dataInicio, prazoEntrega, DONATION_STATUS.RESERVADA],
   );
 
-  await run('UPDATE demands SET status = ? WHERE id = ?', [DEMAND_STATUS.RESERVADA, demandaId]);
+  await run('UPDATE demands SET status = ? WHERE id = ? AND deleted_at IS NULL', [DEMAND_STATUS.RESERVADA, demandaId]);
 
   return {
     id: insertResult.id,
@@ -79,23 +82,27 @@ async function listDonations(user) {
   await expireOverdueDonations();
 
   let query = `
-    SELECT d.*, dm.titulo AS demanda_titulo, dm.descricao AS demanda_descricao, dm.categoria, dm.quantidade,
+    SELECT d.id, d.demanda_id, d.doador_id, d.data_inicio, d.prazo_entrega, d.status, d.codigo_confirmacao,
+           dm.titulo AS demanda_titulo, dm.descricao AS demanda_descricao, dm.categoria, dm.quantidade,
            dm.instituicao_id, dm.recebedor_id
     FROM donations d
     JOIN demands dm ON dm.id = d.demanda_id
   `;
+  const where = ['d.deleted_at IS NULL', 'dm.deleted_at IS NULL'];
   const params = [];
 
   if (user.tipo === USER_TYPES.DOADOR) {
-    query += ' WHERE d.doador_id = ?';
+    where.push('d.doador_id = ?');
     params.push(user.id);
   } else if (user.tipo === USER_TYPES.INSTITUICAO) {
-    query += ' WHERE dm.instituicao_id = ?';
+    where.push('dm.instituicao_id = ?');
     params.push(user.instituicao_id);
   } else if (user.tipo === USER_TYPES.RECEBEDOR) {
-    query += ' WHERE dm.recebedor_id = ?';
+    where.push('dm.recebedor_id = ?');
     params.push(user.id);
   }
+
+  query += ` WHERE ${where.join(' AND ')}`;
 
   query += ' ORDER BY d.id DESC';
 
@@ -110,10 +117,11 @@ async function confirmDonation(id, payload, user) {
   await expireOverdueDonations();
 
   const donation = await get(
-    `SELECT d.*, dm.recebedor_id, dm.instituicao_id
+    `SELECT d.id, d.demanda_id, d.doador_id, d.status, d.codigo_confirmacao,
+            dm.recebedor_id, dm.instituicao_id
      FROM donations d
      JOIN demands dm ON dm.id = d.demanda_id
-     WHERE d.id = ?`,
+     WHERE d.id = ? AND d.deleted_at IS NULL AND dm.deleted_at IS NULL`,
     [id],
   );
 
@@ -158,7 +166,7 @@ async function confirmDonation(id, payload, user) {
   }
 
   await run('UPDATE donations SET status = ? WHERE id = ?', [DONATION_STATUS.CONCLUIDA, id]);
-  await run('UPDATE demands SET status = ? WHERE id = ?', [DEMAND_STATUS.CONCLUIDA, donation.demanda_id]);
+  await run('UPDATE demands SET status = ? WHERE id = ? AND deleted_at IS NULL', [DEMAND_STATUS.CONCLUIDA, donation.demanda_id]);
   await run('UPDATE users SET notificacao_pendente = 1 WHERE id = ?', [donation.recebedor_id]);
 
   return {

@@ -4,6 +4,11 @@ const sqlite3 = require('sqlite3').verbose();
 const dbPath = path.join(__dirname, '../../database.sqlite');
 const db = new sqlite3.Database(dbPath);
 
+// Enforce referential integrity for all operations in this connection.
+db.serialize(() => {
+  db.run('PRAGMA foreign_keys = ON');
+});
+
 function run(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function onRun(err) {

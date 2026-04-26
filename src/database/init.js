@@ -1,10 +1,17 @@
 const bcrypt = require('bcryptjs');
-const { run, get } = require('./db');
+const { run, get, all } = require('./db');
 const {
   USER_TYPES,
   USER_STATUS,
   DEMAND_STATUS,
 } = require('../config/constants');
+
+async function addColumnIfMissing(tableName, columnName, definition) {
+  const columns = await all(`PRAGMA table_info(${tableName})`);
+  if (!columns.some((column) => column.name === columnName)) {
+    await run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
 
 async function createTables() {
   await run(`
@@ -70,6 +77,28 @@ async function createTables() {
       FOREIGN KEY (doador_id) REFERENCES users(id)
     )
   `);
+
+  // Keep schema backward-compatible for existing databases.
+  await addColumnIfMissing('demands', 'deleted_at', 'TEXT DEFAULT NULL');
+  await addColumnIfMissing('donations', 'deleted_at', 'TEXT DEFAULT NULL');
+
+  await run('CREATE INDEX IF NOT EXISTS idx_users_tipo_status ON users(tipo, status)');
+  await run('CREATE INDEX IF NOT EXISTS idx_users_instituicao_id ON users(instituicao_id)');
+
+  await run('CREATE INDEX IF NOT EXISTS idx_requests_instituicao_status ON requests(instituicao_id, status)');
+  await run('CREATE INDEX IF NOT EXISTS idx_requests_receiver_id ON requests(receiver_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_requests_created_at ON requests(created_at)');
+
+  await run('CREATE INDEX IF NOT EXISTS idx_demands_status_categoria ON demands(status, categoria)');
+  await run('CREATE INDEX IF NOT EXISTS idx_demands_instituicao_id ON demands(instituicao_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_demands_recebedor_id ON demands(recebedor_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_demands_created_at ON demands(created_at)');
+  await run('CREATE INDEX IF NOT EXISTS idx_demands_deleted_at ON demands(deleted_at)');
+
+  await run('CREATE INDEX IF NOT EXISTS idx_donations_status_prazo ON donations(status, prazo_entrega)');
+  await run('CREATE INDEX IF NOT EXISTS idx_donations_demanda_id ON donations(demanda_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_donations_doador_id ON donations(doador_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_donations_deleted_at ON donations(deleted_at)');
 }
 
 async function seedDefaults() {
