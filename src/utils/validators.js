@@ -2,6 +2,11 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isStrongPassword(password) {
+  // At least 8 chars, one upper, one lower, one digit, one special char.
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(String(password || ''));
+}
+
 function normalizeCpf(cpf) {
   return String(cpf || '').replace(/\D/g, '');
 }
@@ -36,6 +41,7 @@ function assertRequiredFields(payload, fields) {
 
 module.exports = {
   isValidEmail,
+  isStrongPassword,
   isValidCpf,
   normalizeCpf,
   assertRequiredFields,

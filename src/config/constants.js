@@ -1,5 +1,12 @@
+const jwtSecret = process.env.JWT_SECRET;
+
+if (process.env.NODE_ENV === 'production' && !jwtSecret) {
+  throw new Error('JWT_SECRET precisa estar definido em ambiente de producao.');
+}
+
 module.exports = {
-  JWT_SECRET: process.env.JWT_SECRET || 'dev_secret_change_me',
+  JWT_SECRET: jwtSecret || 'dev_secret_change_me_local_only',
+  API_VERSION_PREFIX: '/v1',
   USER_TYPES: {
     DOADOR: 'doador',
     RECEBEDOR: 'recebedor',

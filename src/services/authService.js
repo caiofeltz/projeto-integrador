@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 
 const { run, get } = require('../database/db');
 const { HttpError } = require('../utils/httpError');
-const { isValidEmail, isValidCpf, normalizeCpf } = require('../utils/validators');
+const { isValidEmail, isValidCpf, normalizeCpf, isStrongPassword } = require('../utils/validators');
 const { JWT_SECRET, USER_TYPES, USER_STATUS, REQUEST_STATUS } = require('../config/constants');
+const { logSecurityEvent } = require('../utils/auditLogger');
 
 function validUserType(tipo) {
   return Object.values(USER_TYPES).includes(tipo);
@@ -29,8 +30,16 @@ async function register(payload) {
     throw new HttpError(400, 'Email inválido.');
   }
 
+  if (!isStrongPassword(senha)) {
+    throw new HttpError(
+      400,
+      'Senha fraca. Use ao menos 8 caracteres com letra maiúscula, minúscula, número e símbolo.',
+    );
+  }
+
   const existingEmail = await get('SELECT id FROM users WHERE email = ?', [email]);
   if (existingEmail) {
+    logSecurityEvent('register_email_conflict', { email });
     throw new HttpError(409, 'Email já cadastrado.');
   }
 
@@ -98,17 +107,22 @@ async function login(payload) {
     [email],
   );
   if (!user) {
+    logSecurityEvent('login_failed_user_not_found', { email });
     throw new HttpError(401, 'Credenciais inválidas.');
   }
 
   const isPasswordValid = await bcrypt.compare(senha, user.senha);
   if (!isPasswordValid) {
+    logSecurityEvent('login_failed_invalid_password', { user_id: user.id, email });
     throw new HttpError(401, 'Credenciais inválidas.');
   }
 
   if (user.status !== USER_STATUS.ATIVO) {
+    logSecurityEvent('login_failed_inactive_user', { user_id: user.id, status: user.status });
     throw new HttpError(403, 'Usuário não está ativo no sistema.');
   }
+
+  logSecurityEvent('login_success', { user_id: user.id, role: user.tipo });
 
   const token = jwt.sign(
     {

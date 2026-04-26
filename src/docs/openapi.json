@@ -1,0 +1,145 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sistema de Doacoes API",
+    "description": "Documentacao da API do projeto integrador.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/v1",
+      "description": "API versionada v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Cadastrar usuario",
+        "responses": {
+          "201": { "description": "Usuario cadastrado" },
+          "400": { "description": "Dados invalidos" },
+          "409": { "description": "Email ja cadastrado" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Autenticar usuario",
+        "responses": {
+          "200": { "description": "Login realizado" },
+          "401": { "description": "Credenciais invalidas" },
+          "403": { "description": "Usuario inativo" }
+        }
+      }
+    },
+    "/demands": {
+      "get": {
+        "tags": ["demands"],
+        "summary": "Listar demandas",
+        "responses": {
+          "200": { "description": "Lista de demandas" }
+        }
+      },
+      "post": {
+        "tags": ["demands"],
+        "summary": "Criar demanda",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Demanda criada" },
+          "400": { "description": "Dados invalidos" },
+          "403": { "description": "Sem permissao" }
+        }
+      }
+    },
+    "/demands/{id}": {
+      "patch": {
+        "tags": ["demands"],
+        "summary": "Atualizar demanda",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Demanda atualizada" },
+          "404": { "description": "Demanda nao encontrada" }
+        }
+      },
+      "delete": {
+        "tags": ["demands"],
+        "summary": "Remover demanda (soft delete)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Demanda removida" },
+          "404": { "description": "Demanda nao encontrada" }
+        }
+      }
+    },
+    "/donations": {
+      "get": {
+        "tags": ["donations"],
+        "summary": "Listar doacoes",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista de doacoes" }
+        }
+      },
+      "post": {
+        "tags": ["donations"],
+        "summary": "Criar reserva de doacao",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Doacao reservada" },
+          "409": { "description": "Demanda indisponivel" }
+        }
+      }
+    },
+    "/donations/{id}/confirm": {
+      "patch": {
+        "tags": ["donations"],
+        "summary": "Confirmar doacao",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Doacao confirmada" },
+          "400": { "description": "Codigo invalido" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "auth" },
+    { "name": "demands" },
+    { "name": "donations" }
+  ]
+}
